@@ -36,7 +36,6 @@ func (w Webservice) Init(port int) Webservice {
 	w.engine.GET(endpoint("config"), w.getConfigs)
 	w.engine.GET(endpoint("config/:id"), w.getConfig)
 	w.engine.POST(endpoint("config"), w.postConfig)
-	w.engine.PUT(endpoint("config/:id"), w.putConfig)
 	w.engine.DELETE(endpoint("config/:id"), w.deleteConfig)
 
 	w.engine.GET(endpoint("schedule"), w.getSchedules)
