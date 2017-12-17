@@ -36,6 +36,7 @@ func (w Webservice) Init(port int) Webservice {
 	w.engine.GET(endpoint("config"), w.getConfigs)
 	w.engine.GET(endpoint("config/:id"), w.getConfig)
 	w.engine.POST(endpoint("config"), w.postConfig)
+	w.engine.PUT(endpoint("config/:id"), w.putConfig)
 	w.engine.DELETE(endpoint("config/:id"), w.deleteConfig)
 
 	w.engine.GET(endpoint("schedule"), w.getSchedules)
@@ -170,7 +171,17 @@ func (w Webservice) getProbes(c *gin.Context) {
 	w.db.Preload("Config").Preload("Config.Parameters").Preload("Schedule").Find(&probes)
 	c.JSON(200, WSObject{0, "OK", probes})
 }
-func (w Webservice) getProbe(c *gin.Context) {}
+func (w Webservice) getProbe(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+
+	if err != nil {
+		c.JSON(200, WSObject{Status: 1, Message: fmt.Sprintf("%v", err)})
+	} else {
+		var probe Probe
+		w.db.First(&probe, id)
+		c.JSON(200, WSObject{Status: 0, Message: "OK", Data: probe})
+	}
+}
 func (w Webservice) postProbe(c *gin.Context) {
 	configId, err := strconv.Atoi(c.PostForm("config_id"))
 
@@ -183,6 +194,11 @@ func (w Webservice) postProbe(c *gin.Context) {
 
 	w.db.First(&config, configId)
 
+	if &config == nil {
+		c.JSON(200, WSObject{Status: 3, Message: "No config found with id"})
+		return
+	}
+
 	scheduleId, err := strconv.Atoi(c.PostForm("schedule_id"))
 
 	if err != nil {
@@ -194,6 +210,11 @@ func (w Webservice) postProbe(c *gin.Context) {
 
 	w.db.First(&schedule, scheduleId)
 
+	if &schedule == nil {
+		c.JSON(200, WSObject{Status: 3, Message: "No schedule found with id"})
+		return
+	}
+
 	probe := Probe{
 		Config:   config,
 		Schedule: schedule,
@@ -203,12 +224,65 @@ func (w Webservice) postProbe(c *gin.Context) {
 
 	c.JSON(200, WSObject{Status: 0, Message: "OK", Data: probe})
 }
-func (w Webservice) deleteProbe(c *gin.Context) {}
+func (w Webservice) deleteProbe(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
 
-func (w Webservice) getAgents(c *gin.Context)   {}
-func (w Webservice) getAgent(c *gin.Context)    {}
-func (w Webservice) postAgent(c *gin.Context)   {}
-func (w Webservice) deleteAgent(c *gin.Context) {}
+	if err != nil {
+		c.JSON(200, WSObject{Status: 1, Message: fmt.Sprintf("%v", err)})
+	} else {
+		var probe Probe
+		w.db.Delete(&probe, id)
+		c.JSON(200, WSObject{Status: 0, Message: "OK"})
+	}
+}
+
+func (w Webservice) getAgents(c *gin.Context) {
+	var agents []Agent
+	w.db.Find(&agents)
+	c.JSON(200, WSObject{0, "OK", agents})
+}
+func (w Webservice) getAgent(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+
+	if err != nil {
+		c.JSON(200, WSObject{Status: 1, Message: fmt.Sprintf("%v", err)})
+	} else {
+		var agent Agent
+		w.db.First(&agent, id)
+		c.JSON(200, WSObject{Status: 0, Message: "OK", Data: agent})
+	}
+}
+func (w Webservice) postAgent(c *gin.Context) {
+	label := c.PostForm("label")
+
+	if label == "" {
+		c.JSON(200, WSObject{Status: 2, Message: "Required parameter 'label' not supplied"})
+		return
+	}
+
+	ip := c.PostForm("ip")
+
+	if ip == "" {
+		c.JSON(200, WSObject{Status: 2, Message: "Required parameter 'ip' not supplied"})
+		return
+	}
+
+	agent := Agent{Label: label, IPAddress: ip}
+	w.db.Create(&agent)
+
+	c.JSON(200, WSObject{Status: 0, Message: "OK", Data: agent})
+}
+func (w Webservice) deleteAgent(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+
+	if err != nil {
+		c.JSON(200, WSObject{Status: 1, Message: fmt.Sprintf("%v", err)})
+	} else {
+		var agent Agent
+		w.db.Delete(&agent, id)
+		c.JSON(200, WSObject{Status: 0, Message: "OK"})
+	}
+}
 
 func (w Webservice) getDeploys(c *gin.Context)   {}
 func (w Webservice) getDeploy(c *gin.Context)    {}

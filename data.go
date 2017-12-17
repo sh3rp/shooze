@@ -48,16 +48,18 @@ type Probe struct {
 	ID       uint     `json:"id",gorm:"primary_key"`
 	Config   Config   `json:"config"`
 	Schedule Schedule `json:"schedule"`
+	DeployID uint     `json:"-"`
 }
 
 type Agent struct {
-	ID        uint `json:"id",gorm:"primary_key"`
-	Label     string
-	IPAddress string
+	ID        uint   `json:"id",gorm:"primary_key"`
+	Label     string `json:"label"`
+	IPAddress string `json:"ip_address"`
+	DeployID  uint   `json:"-"`
 }
 
 type Deploy struct {
-	ID    uint `json:"id",gorm:"primary_key"`
-	Agent Agent
-	Probe Probe
+	ID    uint  `json:"id",gorm:"primary_key"`
+	Agent Agent `json:"agent"`
+	Probe Probe `json:"probe"`
 }
