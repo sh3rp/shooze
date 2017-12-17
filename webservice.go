@@ -94,7 +94,6 @@ func (w Webservice) postConfig(c *gin.Context) {
 					w.db.Create(&parameter)
 					parameters = append(parameters, parameter)
 				}
-				fmt.Printf("%+v\n", parameters)
 			}
 		}
 		config := Config{Action: ActionType(action), Parameters: parameters}
@@ -283,9 +282,54 @@ func (w Webservice) deleteAgent(c *gin.Context) {
 	}
 }
 
-func (w Webservice) getDeploys(c *gin.Context)   {}
-func (w Webservice) getDeploy(c *gin.Context)    {}
-func (w Webservice) postDeploy(c *gin.Context)   {}
+func (w Webservice) getDeploys(c *gin.Context) {
+	var deploys []Deploy
+	w.db.Preload("Agent").Preload("Probe").Find(&deploys)
+	c.JSON(200, WSObject{0, "OK", deploys})
+}
+func (w Webservice) getDeploy(c *gin.Context) {}
+func (w Webservice) postDeploy(c *gin.Context) {
+	probeId, err := strconv.Atoi(c.PostForm("probe_id"))
+
+	if err != nil {
+		c.JSON(200, WSObject{Status: 2, Message: "Required parameter 'probe_id' not supplied"})
+		return
+	}
+
+	var probe Probe
+
+	w.db.First(&probe, probeId)
+
+	if &probe == nil {
+		c.JSON(200, WSObject{Status: 3, Message: "No probe found with id"})
+		return
+	}
+
+	agentId, err := strconv.Atoi(c.PostForm("agent_id"))
+
+	if err != nil {
+		c.JSON(200, WSObject{Status: 2, Message: "Required parameter 'agent_id' not supplied"})
+		return
+	}
+
+	var agent Agent
+
+	w.db.First(&agent, agentId)
+
+	if &agent == nil {
+		c.JSON(200, WSObject{Status: 3, Message: "No agent found with id"})
+		return
+	}
+
+	deploy := Deploy{
+		Agent: agent,
+		Probe: probe,
+	}
+
+	w.db.Create(&deploy)
+
+	c.JSON(200, WSObject{Status: 0, Message: "OK", Data: deploy})
+}
 func (w Webservice) deleteDeploy(c *gin.Context) {}
 
 func endpoint(name string) string {
