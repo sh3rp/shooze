@@ -26,6 +26,8 @@ func NewWebservice() Webservice {
 
 	db.AutoMigrate(&Config{}, &ConfigParameter{}, &Schedule{}, &Probe{}, &Deploy{}, &Agent{})
 	db.Model(&Config{}).Related(&ConfigParameter{})
+	db.Model(&Probe{}).Related(&Config{})
+	db.Model(&Probe{}).Related(&Schedule{})
 
 	return Webservice{db, r}
 }
@@ -131,12 +133,76 @@ func (w Webservice) getSchedule(c *gin.Context) {
 		c.JSON(200, WSObject{Status: 0, Message: "OK", Data: schedule})
 	}
 }
-func (w Webservice) postSchedule(c *gin.Context)   {}
-func (w Webservice) deleteSchedule(c *gin.Context) {}
+func (w Webservice) postSchedule(c *gin.Context) {
+	label := c.PostForm("label")
 
-func (w Webservice) getProbes(c *gin.Context)   {}
-func (w Webservice) getProbe(c *gin.Context)    {}
-func (w Webservice) postProbe(c *gin.Context)   {}
+	if label == "" {
+		c.JSON(200, WSObject{Status: 2, Message: "Required parameter 'label' not supplied"})
+		return
+	}
+
+	cron := c.PostForm("crontab")
+
+	if cron == "" {
+		c.JSON(200, WSObject{Status: 2, Message: "Required parameter 'cron' not supplied"})
+		return
+	}
+
+	schedule := Schedule{Label: label, Cron: cron}
+	w.db.Create(&schedule)
+
+	c.JSON(200, WSObject{Status: 0, Message: "OK", Data: schedule})
+}
+func (w Webservice) deleteSchedule(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+
+	if err != nil {
+		c.JSON(200, WSObject{Status: 1, Message: fmt.Sprintf("%v", err)})
+	} else {
+		var schedule Schedule
+		w.db.Delete(&schedule, id)
+		c.JSON(200, WSObject{Status: 0, Message: "OK"})
+	}
+}
+
+func (w Webservice) getProbes(c *gin.Context) {
+	var probes []Probe
+	w.db.Preload("Config").Preload("Config.Parameters").Preload("Schedule").Find(&probes)
+	c.JSON(200, WSObject{0, "OK", probes})
+}
+func (w Webservice) getProbe(c *gin.Context) {}
+func (w Webservice) postProbe(c *gin.Context) {
+	configId, err := strconv.Atoi(c.PostForm("config_id"))
+
+	if err != nil {
+		c.JSON(200, WSObject{Status: 2, Message: "Required parameter 'config_id' not supplied"})
+		return
+	}
+
+	var config Config
+
+	w.db.First(&config, configId)
+
+	scheduleId, err := strconv.Atoi(c.PostForm("schedule_id"))
+
+	if err != nil {
+		c.JSON(200, WSObject{Status: 2, Message: "Required parameter 'schedule_id' not supplied"})
+		return
+	}
+
+	var schedule Schedule
+
+	w.db.First(&schedule, scheduleId)
+
+	probe := Probe{
+		Config:   config,
+		Schedule: schedule,
+	}
+
+	w.db.Create(&probe)
+
+	c.JSON(200, WSObject{Status: 0, Message: "OK", Data: probe})
+}
 func (w Webservice) deleteProbe(c *gin.Context) {}
 
 func (w Webservice) getAgents(c *gin.Context)   {}
