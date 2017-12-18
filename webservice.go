@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
@@ -18,6 +19,8 @@ type Webservice struct {
 
 func NewWebservice() Webservice {
 	r := gin.Default()
+
+	r.Use(cors.Default())
 
 	db, err := gorm.Open("sqlite3", "/tmp/shooze.db")
 	if err != nil {
